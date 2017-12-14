@@ -5,6 +5,9 @@
 #include "TestResult.h"
 #include "json/json.h"
 #include "TestBCEntity.h"
+#include "braincloud/reason_codes.h"
+#include "braincloud/http_codes.h"
+
 
 using namespace BrainCloud;
 
@@ -82,6 +85,8 @@ TEST_F(TestBCEntity, GetSingleton)
 	TestBCEntity::DeleteEntity();
 }
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
 TEST_F(TestBCEntity, GetSharedEntityForPlayerId)
 {
 	TestResult tr;
@@ -90,7 +95,10 @@ TEST_F(TestBCEntity, GetSharedEntityForPlayerId)
 	tr.run(m_bc);
 	DeleteEntity();
 }
+#pragma clang diagnostic pop
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
 TEST_F(TestBCEntity, GetSharedEntitiesForPlayerId)
 {
 	TestResult tr;
@@ -99,6 +107,7 @@ TEST_F(TestBCEntity, GetSharedEntitiesForPlayerId)
 	tr.run(m_bc);
 	DeleteEntity();
 }
+#pragma clang diagnostic pop
 
 TEST_F(TestBCEntity, GetEntitesByType)
 {

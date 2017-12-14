@@ -6,11 +6,12 @@
 #include "json/json.h"
 #include "braincloud/FriendPlatform.h"
 #include "braincloud/AuthenticationType.h"
-
 #include "TestBCFriend.h"
-
 #include <vector>
 #include <string>
+#include "braincloud/reason_codes.h"
+#include "braincloud/http_codes.h"
+
 
 using namespace BrainCloud;
 
@@ -49,12 +50,15 @@ TEST_F(TestBCFriend, FindUsersBySubstrName)
 	tr.run(m_bc);
 }
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
 TEST_F(TestBCFriend, FindPlayerByUniversalId)
 {
 	TestResult tr;
 	m_bc->getFriendService()->findPlayerByUniversalId("search", 10, &tr);
 	tr.run(m_bc);
 }
+#pragma clang diagnostic pop
 
 TEST_F(TestBCFriend, GetSummaryDataForProfileId)
 {

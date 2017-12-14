@@ -16,8 +16,6 @@
 #include "braincloud/INetworkErrorCallback.h"
 #include "braincloud/IRewardCallback.h"
 #include "braincloud/IServerCallback.h"
-#include "braincloud/reason_codes.h"
-#include "braincloud/http_codes.h"
 
 #include "braincloud/internal/IBrainCloudComms.h"
 #include "braincloud/BrainCloudTypes.h"
@@ -73,6 +71,12 @@ namespace BrainCloud
 	class BrainCloudClient
 	{
 	public:
+        /**
+         * Set to false to ensure an error is thrown when the brainCloud singleton is called
+         */
+		static bool EnableSingletonMode;
+		static const char * SingletonUseErrorMessage;
+
 		/**
 		 * Destructor
 		 */
@@ -83,9 +87,18 @@ namespace BrainCloud
 		 * to the singleton object in order to use the class.
 		 *
 		 * @return BrainCloudClient * - pointer to the singleton BrainCloudClient object
+		 *
+		 * @deprecated Use of the *singleton* has been deprecated. We recommend that you create your own *variable* to hold an instance of the brainCloudWrapper. Explanation here: http://getbraincloud.com/blog
 		 */
 		static BrainCloudClient * getInstance();
-		
+
+		/**
+		 * BrainCloudClient can be instantiated as a single object. Do not use getInstance() when
+		 * creating your own brainCloud object.
+		 */
+		BrainCloudClient();
+
+
 		/**
 		 * Method initializes the BrainCloudClient.
 		 *
@@ -532,8 +545,6 @@ namespace BrainCloud
 		void overrideLanguageCode(const char * in_languageCode) { _languageCode = in_languageCode; }
 
 	protected:
-		BrainCloudClient();
-
 		static BrainCloudClient * _instance;
 
 		IBrainCloudComms * _brainCloudComms;
