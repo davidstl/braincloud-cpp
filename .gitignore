@@ -57,3 +57,4 @@ cmake_*
 autobuild/artifacts
 autobuild/tmp
 *.swp
+CMakeFiles/

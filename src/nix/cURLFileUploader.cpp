@@ -2,6 +2,12 @@
 #include <TargetConditionals.h>
 #endif
 
+#if defined(WIN32)
+#include <stdio.h>
+FILE _iob[] = { *stdin, *stdout, *stderr };
+extern "C" FILE * __cdecl __iob_func(void) { return _iob; }
+#endif
+
 #if (TARGET_OS_WATCH != 1) // necessary as cocoapods doesn't allow per platform source files
 
 
