@@ -30,6 +30,28 @@
 #include "braincloud/internal/nix/cURLFileUploader.h"
 #endif
 
+#if defined(USE_PTHREAD)
+static void lock_mutex(pthread_mutex_t *pMutex)
+{
+    pthread_mutex_lock(pMutex);
+}
+
+static void unlock_mutex(pthread_mutex_t *pMutex)
+{
+    pthread_mutex_unlock(pMutex);
+}
+#else
+static void lock_mutex(std::mutex *pMutex)
+{
+    pMutex->lock();
+}
+
+static void unlock_mutex(std::mutex *pMutex)
+{
+    pMutex->unlock();
+}
+#endif
+
 namespace BrainCloud
 {
 	BrainCloudComms::BrainCloudComms(BrainCloudClient* in_client)
@@ -38,22 +60,11 @@ namespace BrainCloud
 		, _request(NULL)
 		, _retryTimeMillis(RETRY_TIME_NOT_RETRYING)
 	{
-		pthread_mutexattr_t mutexAtts;
-		pthread_mutexattr_init(&mutexAtts);
-		pthread_mutexattr_settype(&mutexAtts, PTHREAD_MUTEX_RECURSIVE);
-		pthread_mutex_init(&_mutex, &mutexAtts);
-		pthread_mutex_init(&_loaderMutex, &mutexAtts);
-		pthread_mutex_init(&_queueMutex, &mutexAtts);
-		pthread_mutexattr_destroy(&mutexAtts);
-
 		resetErrorCache();
 	}
 
 	BrainCloudComms::~BrainCloudComms()
 	{
-		pthread_mutex_destroy(&_loaderMutex);
-		pthread_mutex_destroy(&_queueMutex);
-		pthread_mutex_destroy(&_mutex);
 	}
 
 
@@ -91,7 +102,7 @@ namespace BrainCloud
 			return;
 		}
 
-		pthread_mutex_lock(&_loaderMutex);
+        _loaderMutex.lock();
 
 		if (_loader != NULL)
 		{
@@ -125,9 +136,9 @@ namespace BrainCloud
 		{
 			int64_t currentTimeMillis = TimeUtil::getCurrentTimeMillis();
 
-			pthread_mutex_lock(&_queueMutex);
+            _queueMutex.lock();
 			bool queueHasMessages = _queue.size() > 0;
-			pthread_mutex_unlock(&_queueMutex);
+            _queueMutex.unlock();
 
 			// are we in a retry?
 			if (_retryTimeMillis != RETRY_TIME_NOT_RETRYING && _request != NULL)
@@ -155,11 +166,11 @@ namespace BrainCloud
 			}
 		}
 
-		pthread_mutex_unlock(&_loaderMutex);
+        _loaderMutex.unlock();
 
 
 		// ????
-		pthread_mutex_lock(&_mutex);
+        _mutex.lock();
 		Json::Value rewards;
 
 		// Process any events that are present until the queue is empty.
@@ -215,78 +226,78 @@ namespace BrainCloud
 		}
 
 		runCallbacksFileUpload();
-		pthread_mutex_unlock(&_mutex);
+        _mutex.unlock();
 	}
 
 	void BrainCloudComms::registerEventCallback(IEventCallback *in_eventCallback)
 	{
-		pthread_mutex_lock(&_mutex);
-		_eventCallback = in_eventCallback;
-		pthread_mutex_unlock(&_mutex);
-	}
+        _mutex.lock();
+        _eventCallback = in_eventCallback;
+        _mutex.unlock();
+    }
 
 	void BrainCloudComms::deregisterEventCallback()
 	{
-		pthread_mutex_lock(&_mutex);
-		_eventCallback = NULL;
-		pthread_mutex_unlock(&_mutex);
-	}
+        _mutex.lock();
+        _eventCallback = NULL;
+        _mutex.unlock();
+    }
 
 	void BrainCloudComms::registerFileUploadCallback(IFileUploadCallback *in_fileUploadCallback)
 	{
-		pthread_mutex_lock(&_mutex);
-		_fileUploadCallback = in_fileUploadCallback;
-		pthread_mutex_unlock(&_mutex);
-	}
+        _mutex.lock();
+        _fileUploadCallback = in_fileUploadCallback;
+        _mutex.unlock();
+    }
 
 	void BrainCloudComms::deregisterFileUploadCallback()
 	{
-		pthread_mutex_lock(&_mutex);
-		_fileUploadCallback = NULL;
-		pthread_mutex_unlock(&_mutex);
-	}
+        _mutex.lock();
+        _fileUploadCallback = NULL;
+        _mutex.unlock();
+    }
 
 	void BrainCloudComms::registerRewardCallback(IRewardCallback *in_rewardCallback)
 	{
-		pthread_mutex_lock(&_mutex);
-		_rewardCallback = in_rewardCallback;
-		pthread_mutex_unlock(&_mutex);
-	}
+        _mutex.lock();
+        _rewardCallback = in_rewardCallback;
+        _mutex.unlock();
+    }
 
 	void BrainCloudComms::deregisterRewardCallback()
 	{
-		pthread_mutex_lock(&_mutex);
-		_rewardCallback = NULL;
-		pthread_mutex_unlock(&_mutex);
-	}
+        _mutex.lock();
+        _rewardCallback = NULL;
+        _mutex.unlock();
+    }
 
 	void BrainCloudComms::registerGlobalErrorCallback(IGlobalErrorCallback *in_globalErrorCallback)
 	{
-		pthread_mutex_lock(&_mutex);
-		_globalErrorCallback = in_globalErrorCallback;
-		pthread_mutex_unlock(&_mutex);
-	}
+        _mutex.lock();
+        _globalErrorCallback = in_globalErrorCallback;
+        _mutex.unlock();
+    }
 
 	void BrainCloudComms::deregisterGlobalErrorCallback()
 	{
-		pthread_mutex_lock(&_mutex);
-		_globalErrorCallback = NULL;
-		pthread_mutex_unlock(&_mutex);
-	}
+        _mutex.lock();
+        _globalErrorCallback = NULL;
+        _mutex.unlock();
+    }
 
 	void BrainCloudComms::registerNetworkErrorCallback(INetworkErrorCallback *in_networkErrorCallback)
 	{
-		pthread_mutex_lock(&_mutex);
-		_networkErrorCallback = in_networkErrorCallback;
-		pthread_mutex_unlock(&_mutex);
-	}
+        _mutex.lock();
+        _networkErrorCallback = in_networkErrorCallback;
+        _mutex.unlock();
+    }
 
 	void BrainCloudComms::deregisterNetworkErrorCallback()
 	{
-		pthread_mutex_lock(&_mutex);
+        _mutex.lock();
 		_networkErrorCallback = NULL;
-		pthread_mutex_unlock(&_mutex);
-	}
+        _mutex.unlock();
+    }
 
 	/**
 	 * Add a new server call definition to the request queue.
@@ -294,21 +305,21 @@ namespace BrainCloud
 	void BrainCloudComms::addToQueue(ServerCall * sc)
 	{
 		// Add the new ServerCall to the end of the queue.
-		pthread_mutex_lock(&_queueMutex);
+        _queueMutex.lock();
 		_queue.push_back(sc);
-		pthread_mutex_unlock(&_queueMutex);
+        _queueMutex.unlock();
 	}
 
 	void BrainCloudComms::enableNetworkErrorMessageCaching(bool in_enabled)
 	{
-		pthread_mutex_lock(&_loaderMutex);
+        _loaderMutex.lock();
 		_cacheMessagesOnNetworkError = in_enabled;
-		pthread_mutex_unlock(&_loaderMutex);
+        _loaderMutex.unlock();
 	}
 
 	void BrainCloudComms::retryCachedMessages()
 	{
-		pthread_mutex_lock(&_loaderMutex);
+        _loaderMutex.lock();
 		if (_blockingQueue && _request)
 		{
 			_retryCount = 0;
@@ -316,12 +327,12 @@ namespace BrainCloud
 			startHttpRequest();
 			_blockingQueue = false;
 		}
-		pthread_mutex_unlock(&_loaderMutex);
+        _loaderMutex.unlock();
 	}
 
 	void BrainCloudComms::flushCachedMessages(bool in_sendApiErrorCallbacks)
 	{
-		pthread_mutex_lock(&_loaderMutex);
+        _loaderMutex.lock();
 		if (_blockingQueue)
 		{
 			if (in_sendApiErrorCallbacks)
@@ -341,7 +352,7 @@ namespace BrainCloud
 			}
 			_blockingQueue = false;
 		}
-		pthread_mutex_unlock(&_loaderMutex);
+        _loaderMutex.unlock();
 	}
 
 	void BrainCloudComms::handleResponseBundle(Json::Value & root)
@@ -370,7 +381,7 @@ namespace BrainCloud
 		// called in the same update)
 		////////////////////////////////////////////////////
 
-		pthread_mutex_lock(&_mutex);
+        _mutex.lock();
 
 		for (unsigned int i = 0; i < _inProgress.size(); ++i)
 		{
@@ -516,7 +527,7 @@ namespace BrainCloud
 			}
 		}
 
-		pthread_mutex_unlock(&_mutex);
+        _mutex.unlock();
 	}
 
 	/**
@@ -651,7 +662,7 @@ namespace BrainCloud
 
 		resetErrorCache();
 
-		pthread_mutex_lock(&_loaderMutex);
+        _loaderMutex.lock();
 		if (_loader != NULL)
 		{
 			_loader->close();
@@ -670,7 +681,7 @@ namespace BrainCloud
 			}
 			_loader = NULL;
 		}
-		pthread_mutex_unlock(&_loaderMutex);
+        _loaderMutex.unlock();
 
 		_retryCount = 0;
 		_retryTimeMillis = RETRY_TIME_NOT_RETRYING;
@@ -688,14 +699,14 @@ namespace BrainCloud
 			_inProgress.pop_back();
 		}
 
-		pthread_mutex_lock(&_queueMutex);
+        _queueMutex.lock();
 		while (!_queue.empty())
 		{
 			delete _queue.back();
 			_queue.pop_back();
 		}
 		_eventCallbackQueue.clear();
-		pthread_mutex_unlock(&_queueMutex);
+        _queueMutex.unlock();
 	}
 
 	void BrainCloudComms::shutdown()
@@ -881,7 +892,7 @@ namespace BrainCloud
 		Json::Value messages(Json::arrayValue);
 
 		// pull all the messages off the queue and release lock
-		pthread_mutex_lock(&_queueMutex);
+        _queueMutex.lock();
 
 		// reorder the queue if it has an authenticate message, since the server relies
 		// upon the auth being the first message in the queue, if it doens't
@@ -960,7 +971,7 @@ namespace BrainCloud
 				break;
 		}
 
-		pthread_mutex_unlock(&_queueMutex);
+        _queueMutex.unlock();
 
 		// if there are messages to send, do it
 		if (messages.size() > 0)
@@ -1072,20 +1083,20 @@ namespace BrainCloud
 	// UPLOADER STUFF
 	void BrainCloudComms::cancelUpload(const char * in_fileUploadId)
 	{
-		pthread_mutex_lock(&_mutex);
+        _mutex.lock();
 		tFileUploadsIterator it = _fileUploads.find(in_fileUploadId);
 		if (it != _fileUploads.end())
 		{
 			it->second->cancelUpload();
 		}
-		pthread_mutex_unlock(&_mutex);
+        _mutex.unlock();
 	}
 
 	double BrainCloudComms::getUploadProgress(const char * in_fileUploadId)
 	{
 		double progress = 0;
-		pthread_mutex_lock(&_mutex);
-		tFileUploadsIterator it = _fileUploads.find(in_fileUploadId);
+        _mutex.lock();
+        tFileUploadsIterator it = _fileUploads.find(in_fileUploadId);
 		if (it != _fileUploads.end())
 		{
 			progress = it->second->getProgress();
@@ -1094,7 +1105,7 @@ namespace BrainCloud
 		{
 			progress = -1;
 		}
-		pthread_mutex_unlock(&_mutex);
+        _mutex.unlock();
 
 		return progress;
 	}
@@ -1102,8 +1113,8 @@ namespace BrainCloud
 	int64_t BrainCloudComms::getUploadTotalBytesToTransfer(const char * in_fileUploadId)
 	{
 		int64_t totalBytesToTransfer = 0;
-		pthread_mutex_lock(&_mutex);
-		tFileUploadsIterator it = _fileUploads.find(in_fileUploadId);
+        _mutex.lock();
+        tFileUploadsIterator it = _fileUploads.find(in_fileUploadId);
 		if (it != _fileUploads.end())
 		{
 			totalBytesToTransfer = it->second->getTotalBytesToTransfer();
@@ -1112,7 +1123,7 @@ namespace BrainCloud
 		{
 			totalBytesToTransfer = -1;
 		}
-		pthread_mutex_unlock(&_mutex);
+        _mutex.unlock();
 
 		return totalBytesToTransfer;
 	}
@@ -1120,8 +1131,8 @@ namespace BrainCloud
 	int64_t BrainCloudComms::getUploadBytesTransferred(const char * in_fileUploadId)
 	{
 		int64_t bytesToTransfer = 0;
-		pthread_mutex_lock(&_mutex);
-		tFileUploadsIterator it = _fileUploads.find(in_fileUploadId);
+        _mutex.lock();
+        tFileUploadsIterator it = _fileUploads.find(in_fileUploadId);
 		if (it != _fileUploads.end())
 		{
 			bytesToTransfer = it->second->getBytesTransferred();
@@ -1130,7 +1141,7 @@ namespace BrainCloud
 		{
 			bytesToTransfer = -1;
 		}
-		pthread_mutex_unlock(&_mutex);
+        _mutex.unlock();
 
 		return bytesToTransfer;
 	}
@@ -1157,13 +1168,13 @@ namespace BrainCloud
 
 		// TODO: throttle file uploads to max #
 
-		pthread_mutex_lock(&_mutex);
+        _mutex.lock();
 
 		if (_fileUploads.find(fileUploadId) != _fileUploads.end())
 		{
 			// that can't be right....
-			pthread_mutex_unlock(&_mutex);
-			return;
+            _mutex.unlock();
+            return;
 		}
 
 #if defined (IW_SDK)
@@ -1184,8 +1195,8 @@ namespace BrainCloud
 			delete uploader;
 		}
 #endif
-		pthread_mutex_unlock(&_mutex);
-	}
+        _mutex.unlock();
+    }
 
 
 }

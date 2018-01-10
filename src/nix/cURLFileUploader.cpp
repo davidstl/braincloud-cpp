@@ -32,6 +32,10 @@ extern "C" FILE * __cdecl __iob_func(void) { return _iob; }
 #include "braincloud/reason_codes.h"
 #include "braincloud/internal/IBrainCloudComms.h"
 
+#if !defined(USE_PTHREAD)
+#include <thread>
+#endif
+
 namespace BrainCloud
 {
     bool cURLFileUploader::_loggingEnabled = false;
@@ -47,17 +51,16 @@ namespace BrainCloud
     , _threadRunning(false)
     , _shouldCancelUpload(false)
     {
+#if defined(USE_PTHREAD)
         memset(&_threadId, 0, sizeof(pthread_t));
         memset(&_threadAttributes, 0, sizeof(_threadAttributes));
-        memset(&_lock, 0, sizeof(_lock));
-        
-        int rc = 0;
-        rc = pthread_mutex_init(&_lock, NULL);
-        if (rc != 0)
+#endif
+
+        if (!_lock.isValid())
         {
             if (_loggingEnabled)
             {
-                std::cout << "#BCC Couldn't create mutex, returned " << rc << std::endl;
+                std::cout << "#BCC Couldn't create mutex" << std::endl;
             }
         }
     }
@@ -66,21 +69,22 @@ namespace BrainCloud
     cURLFileUploader::~cURLFileUploader()
     {
         close();
-        pthread_mutex_destroy(&_lock);
     }
     
     
     void cURLFileUploader::close()
     {
-        if ( _threadRunning )
+        if (_threadRunning)
         {
+#if defined(USE_PTHREAD)
             pthread_attr_destroy(&_threadAttributes);
             /*
-             if (_threadId != 0)
-             {
-             pthread_join(_threadId, NULL);
-             }
-             */
+            if (_threadId != 0)
+            {
+            pthread_join(_threadId, NULL);
+            }
+            */
+#endif
             _threadRunning = false;
         }
     }
@@ -113,6 +117,7 @@ namespace BrainCloud
         _uploadUrl = in_uploadUrl;
         _fileLength = static_cast<long>(in_fileSize);
         
+#if defined(USE_PTHREAD)
         int rc = 0;
         rc = pthread_attr_init(&_threadAttributes);
         if (rc != 0)
@@ -147,6 +152,12 @@ namespace BrainCloud
             close();
             return false;
         }
+#else
+        _threadRunning = true;
+        _status = UPLOAD_STATUS_PENDING;
+        auto thread = std::thread(run, this);
+        thread.detach();
+#endif
         
         return true;
     }
@@ -180,9 +191,9 @@ namespace BrainCloud
     IFileUploader::eFileUploaderStatus cURLFileUploader::getStatus()
     {
         eFileUploaderStatus status;
-        pthread_mutex_lock(&_lock);
+        _lock.lock();
         status = _status;
-        pthread_mutex_unlock(&_lock);
+        _lock.unlock();
         return status;
     }
     
@@ -193,23 +204,23 @@ namespace BrainCloud
     
     void cURLFileUploader::cancelUpload()
     {
-        pthread_mutex_lock(&_lock);
+        _lock.lock();
         if (_curl != NULL)
         {
             _shouldCancelUpload = true;
         }
-        pthread_mutex_unlock(&_lock);
+        _lock.unlock();
     }
     
     int64_t cURLFileUploader::getBytesTransferred()
     {
         int64_t bytesTransferred = 0;
-        pthread_mutex_lock(&_lock);
+        _lock.lock();
         if (_curl != NULL)
         {
             bytesTransferred = _uploadTransferredBytes;
         }
-        pthread_mutex_unlock(&_lock);
+        _lock.unlock();
         return bytesTransferred;
     }
     
@@ -221,21 +232,21 @@ namespace BrainCloud
     double cURLFileUploader::getProgress()
     {
         double result = 0;
-        pthread_mutex_lock(&_lock);
+        _lock.lock();
         if (_curl != NULL && _uploadTotalBytes > 0)
         {
             result = _uploadTransferredBytes / (double) _uploadTotalBytes;
         }
-        pthread_mutex_unlock(&_lock);
+        _lock.unlock();
         return result;
     }
     
     void cURLFileUploader::setProgress(curl_off_t ultotal, curl_off_t ulnow)
     {
-        pthread_mutex_lock(&_lock);
+        _lock.lock();
         _uploadTotalBytes = static_cast<long>(ultotal);
         _uploadTransferredBytes = static_cast<long>(ulnow);
-        pthread_mutex_unlock(&_lock);
+        _lock.unlock();
     }
     
     // curl ver 7.32 (aug 2013) support xferinfo cb
@@ -278,9 +289,9 @@ namespace BrainCloud
     
     void cURLFileUploader::setStatus(eFileUploaderStatus in_status)
     {
-        pthread_mutex_lock(&_lock);
+        _lock.lock();
         _status = in_status;
-        pthread_mutex_unlock(&_lock);
+        _lock.unlock();
     }
     
     // these are only safe to call when thread running is false

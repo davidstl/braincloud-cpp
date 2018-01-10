@@ -9,15 +9,24 @@ endif()
 # CMake options
 option(USE_CPPREST "Use CPPREST instead of CURL" OFF)
 option(BUILD_TESTS "brainCloud Unit Tests" ON)
+option(USE_PTHREAD_WIN32 "Use pthreads instead of C++11 threads on VS2013+" OFF)
 
+# Definitions
 add_definitions(-DUSE_IMMEDIATE_RETRY)
 add_definitions(-DGAMECLIENT_DEBUGLEVEL=1)
+if (MSVC_VERSION LESS 1800 OR USE_PTHREAD_WIN32 OR NOT WIN32)
+	add_definitions(-DUSE_PTHREAD)
+	set(USE_PTHREAD 1)
+else()
+	set(CMAKE_CXX_STANDARD 11) # We want to use C++11 flag on the compiler
+endif()
 
 # Multi core compilation in VS
 if (MSVC)
     SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" "/MP")
 endif()
 
+# Build tests
 if (DEFINED(${BUILD_TESTS}) OR ${BUILD_TESTS})
 	add_subdirectory("${CMAKE_SOURCE_DIR}/tests")
 endif()
@@ -120,6 +129,7 @@ add_library(brainCloud STATIC
 	include/braincloud/reason_codes.h
 
 	# private headers
+	include/braincloud/internal/Mutex.h
 	include/braincloud/internal/GUID.h
 	include/braincloud/internal/IBrainCloudComms.h
 	include/braincloud/internal/IFileUploader.h
@@ -227,18 +237,22 @@ elseif (WIN32)
 
 		target_link_libraries(brainCloud general ${BC_WINHTTP_LIB} ${BC_BCRYPT_LIB} ${BC_CRYPT32_LIB} debug ${BC_CPPREST_DEBUG_LIB} optimized ${BC_CPPREST_RELEASE_LIB})
 	else()
-		# build pthread
-		set(PTHREADS_BUILD_STATIC 1)
-		add_definitions(-DPTW32_STATIC_LIB)
-		add_subdirectory("${BC_DIR}/lib/win32/pthreads-win32")
-		include_directories("${BC_DIR}/lib/win32/pthreads-win32/pthreads-win32")
+		if (USE_PTHREAD)
+			# build pthread
+			set(PTHREADS_BUILD_STATIC 1)
+			add_definitions(-DPTW32_STATIC_LIB)
+			add_subdirectory("${BC_DIR}/lib/win32/pthreads-win32")
+			include_directories("${BC_DIR}/lib/win32/pthreads-win32/pthreads-win32")
+			list(APPEND libraries pthreadsVC2)
+		endif()
 
 		# build curl
 		add_definitions(-DCURL_STATICLIB)
-		add_subdirectory("${BC_DIR}/lib/win32/curl-7.57.0")
-		include_directories("${BC_DIR}/lib/win32/curl-7.57.0/include")
+		add_subdirectory("${BC_DIR}/lib/win32/curl-7.56.0")
+		include_directories("${BC_DIR}/lib/win32/curl-7.56.0/include")
+		list(APPEND libraries libcurl)
 
-		target_link_libraries(brainCloud PUBLIC pthreadsVC2 libcurl)
+		target_link_libraries(brainCloud PUBLIC ${libraries})
 	endif()
 endif()
 
