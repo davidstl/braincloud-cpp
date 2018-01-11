@@ -13,10 +13,8 @@ endif()
 #=============================================================================
 # CMake options
 #=============================================================================
-option(USE_CPPREST "Use CPPREST instead of CURL" OFF)
+option(USE_CPPREST "Use CPPREST instead of CURL (Ignored in VS2013+)" OFF)
 option(BUILD_TESTS "brainCloud Unit Tests" OFF)
-option(USE_PTHREAD_WIN32 "Use pthreads instead of C++11 threads on VS2013+" OFF)
-option(USE_CURL_WIN32 "Use CURL instead of IXMLHttpRequest2 on VS2013+" OFF)
 
 #=============================================================================
 # Definitions
@@ -25,13 +23,13 @@ add_definitions(-DUSE_IMMEDIATE_RETRY)
 add_definitions(-DGAMECLIENT_DEBUGLEVEL=1)
 
 # On VS2013+, lets not use CURL but straight Windows' IXMLHttpRequest2, unless specified otherwise
-if ((NOT VS2013_OR_HIGHER OR USE_CURL_WIN32 OR NOT WIN32) AND NOT USE_CPPREST)
+if (NOT USE_CPPREST AND NOT VS2013_OR_HIGHER)
 	add_definitions(-DUSE_CURL)
 	set(USE_CURL 1)
 endif()
 
 # On VS2013+, lets not use CURL but straight Windows' IXMLHttpRequest2, unless specified otherwise
-if (NOT VS2013_OR_HIGHER OR USE_PTHREAD_WIN32 OR NOT WIN32)
+if (NOT USE_CPPREST AND NOT VS2013_OR_HIGHER)
 	add_definitions(-DUSE_PTHREAD)
 	set(USE_PTHREAD 1)
 endif()
@@ -40,7 +38,7 @@ endif()
 # Compiler flags
 #=============================================================================
 # We want to use C++11 flag on the compiler for std::thread
-if (NOT USE_PTHREAD OR NOT USE_CURL)
+if (VS2013_OR_HIGHER)
 	set(CMAKE_CXX_STANDARD 11)
 endif()
 
@@ -272,26 +270,25 @@ elseif (WIN32)
 
 		target_link_libraries(brainCloud general ${BC_WINHTTP_LIB} ${BC_BCRYPT_LIB} ${BC_CRYPT32_LIB} debug ${BC_CPPREST_DEBUG_LIB} optimized ${BC_CPPREST_RELEASE_LIB})
 	else()
-		# build pthread
-		if (USE_PTHREAD)
-			set(PTHREADS_BUILD_STATIC 1)
-			add_definitions(-DPTW32_STATIC_LIB)
-			add_subdirectory("${BC_DIR}/lib/win32/pthreads-win32")
-			include_directories("${BC_DIR}/lib/win32/pthreads-win32/pthreads-win32")
-			list(APPEND libraries pthreadsVC2)
-		endif()
-
-		# build curl
-		if (USE_CURL)
-			add_definitions(-DCURL_STATICLIB)
-			add_subdirectory("${BC_DIR}/lib/win32/curl-7.56.0")
-			include_directories("${BC_DIR}/lib/win32/curl-7.56.0/include")
-			list(APPEND libraries libcurl)
+		if (VS2013_OR_HIGHER)
+			target_link_libraries(brainCloud PUBLIC msxml6 comsuppwd)
 		else()
-			list(APPEND libraries msxml6 comsuppwd)
-		endif()
+			# TODO: the cpprestsdk-static is *not* built by the CMake project.
+			# You will need to manually load up the project and build the various libs
 
-		target_link_libraries(brainCloud PUBLIC ${libraries})
+			include_directories("${BC_DIR}/lib/win32/cpprestsdk-static/Release/include")
+			add_definitions(-D_NO_ASYNCRTIMP -DUSE_NEW_COMMS)
+			find_library(BC_CPPREST_RELEASE_LIB cpprest120_2_0.lib "${BC_DIR}/lib/win32/cpprestsdk-static/Binaries/Win32/Release")
+			find_library(BC_CPPREST_DEBUG_LIB cpprest120d_2_0.lib "${BC_DIR}/lib/win32/cpprestsdk-static/Binaries/Win32/Debug")
+
+			# additional libs required by cpprestsdk
+			set (WIN_PLATFORM_DIR "C:/Program Files (x86)/Windows Kits/8.1/Lib/winv6.3/um/x86")
+			find_library(BC_WINHTTP_LIB winhttp.lib ${WIN_PLATFORM_DIR})
+			find_library(BC_BCRYPT_LIB bcrypt.lib ${WIN_PLATFORM_DIR})
+			find_library(BC_CRYPT32_LIB crypt32.lib ${WIN_PLATFORM_DIR})
+
+			target_link_libraries(brainCloud general ${BC_WINHTTP_LIB} ${BC_BCRYPT_LIB} ${BC_CRYPT32_LIB} debug ${BC_CPPREST_DEBUG_LIB} optimized ${BC_CPPREST_RELEASE_LIB})
+		endif()
 	endif()
 endif()
 
