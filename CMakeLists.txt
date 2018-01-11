@@ -1,24 +1,47 @@
-cmake_minimum_required (VERSION 3.0)
+cmake_minimum_required(VERSION 3.0)
 
-project (brainCloud)
+project(brainCloud)
 
+# Usefull flags
 if (UNIX AND NOT APPLE)
     set(LINUX 1)
 endif()
+if (WIN32 AND MSVC AND MSVC_VERSION GREATER_EQUAL 1800)
+	set(VS2013_OR_HIGHER 1)
+endif()
 
+#=============================================================================
 # CMake options
+#=============================================================================
 option(USE_CPPREST "Use CPPREST instead of CURL" OFF)
-option(BUILD_TESTS "brainCloud Unit Tests" ON)
+option(BUILD_TESTS "brainCloud Unit Tests" OFF)
 option(USE_PTHREAD_WIN32 "Use pthreads instead of C++11 threads on VS2013+" OFF)
+option(USE_CURL_WIN32 "Use CURL instead of IXMLHttpRequest2 on VS2013+" OFF)
 
+#=============================================================================
 # Definitions
+#=============================================================================
 add_definitions(-DUSE_IMMEDIATE_RETRY)
 add_definitions(-DGAMECLIENT_DEBUGLEVEL=1)
-if (MSVC_VERSION LESS 1800 OR USE_PTHREAD_WIN32 OR NOT WIN32)
+
+# On VS2013+, lets not use CURL but straight Windows' IXMLHttpRequest2, unless specified otherwise
+if ((NOT VS2013_OR_HIGHER OR USE_CURL_WIN32 OR NOT WIN32) AND NOT USE_CPPREST)
+	add_definitions(-DUSE_CURL)
+	set(USE_CURL 1)
+endif()
+
+# On VS2013+, lets not use CURL but straight Windows' IXMLHttpRequest2, unless specified otherwise
+if (NOT VS2013_OR_HIGHER OR USE_PTHREAD_WIN32 OR NOT WIN32)
 	add_definitions(-DUSE_PTHREAD)
 	set(USE_PTHREAD 1)
-else()
-	set(CMAKE_CXX_STANDARD 11) # We want to use C++11 flag on the compiler
+endif()
+
+#=============================================================================
+# Compiler flags
+#=============================================================================
+# We want to use C++11 flag on the compiler for std::thread
+if (NOT USE_PTHREAD OR NOT USE_CURL)
+	set(CMAKE_CXX_STANDARD 11)
 endif()
 
 # Multi core compilation in VS
@@ -26,14 +49,16 @@ if (MSVC)
     SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" "/MP")
 endif()
 
-# Build tests
+#=============================================================================
+# Unit Tests
+#=============================================================================
 if (DEFINED(${BUILD_TESTS}) OR ${BUILD_TESTS})
 	add_subdirectory("${CMAKE_SOURCE_DIR}/tests")
 endif()
 
-################################
+#=============================================================================
 # Braincloud client
-################################
+#=============================================================================
 
 set (BC_DIR "${PROJECT_SOURCE_DIR}")
 set (OS_SPECIFIC_SRCS "")
@@ -49,13 +74,20 @@ if (WIN32 AND (${USE_CPPREST}))
 	list(APPEND OS_SPECIFIC_SRCS "src/win/BrainCloudComms2.cpp")
 	list(APPEND OS_SPECIFIC_SRCS "src/win/CppRestFileUploader.cpp")
 	list(APPEND OS_SPECIFIC_SRCS "src/win/MD5.cpp")
-else()
+elseif (USE_CURL)
 	list(APPEND OS_SPECIFIC_INCS "include/braincloud/internal/BrainCloudComms.h")
 	list(APPEND OS_SPECIFIC_SRCS "src/BrainCloudComms.cpp")
 	list(APPEND OS_SPECIFIC_INCS "include/braincloud/internal/nix/cURLFileUploader.h")
 	list(APPEND OS_SPECIFIC_INCS "include/braincloud/internal/nix/cURLLoader.h")
 	list(APPEND OS_SPECIFIC_SRCS "src/nix/cURLFileUploader.cpp")
 	list(APPEND OS_SPECIFIC_SRCS "src/nix/cURLLoader.cpp")
+else()
+	list(APPEND OS_SPECIFIC_INCS "include/braincloud/internal/BrainCloudComms.h")
+	list(APPEND OS_SPECIFIC_SRCS "src/BrainCloudComms.cpp")
+	list(APPEND OS_SPECIFIC_INCS "include/braincloud/internal/win/XMLHTTPRequestFileUploader.h")
+	list(APPEND OS_SPECIFIC_INCS "include/braincloud/internal/win/XMLHTTPRequestLoader.h")
+	list(APPEND OS_SPECIFIC_SRCS "src/win/XMLHTTPRequestFileUploader.cpp")
+	list(APPEND OS_SPECIFIC_SRCS "src/win/XMLHTTPRequestLoader.cpp")
 endif()
 
 # other platform specific srcs/includes
@@ -206,6 +238,9 @@ add_library(brainCloud STATIC
 	${JSONCPP_FILES}
 )
 
+#=============================================================================
+# Libraries
+#=============================================================================
 if (APPLE)
 	find_library(BC_GAMEKIT_LIB GameKit)
 	find_library(BC_COREFOUNDATION_LIB CoreFoundation)
@@ -237,8 +272,8 @@ elseif (WIN32)
 
 		target_link_libraries(brainCloud general ${BC_WINHTTP_LIB} ${BC_BCRYPT_LIB} ${BC_CRYPT32_LIB} debug ${BC_CPPREST_DEBUG_LIB} optimized ${BC_CPPREST_RELEASE_LIB})
 	else()
+		# build pthread
 		if (USE_PTHREAD)
-			# build pthread
 			set(PTHREADS_BUILD_STATIC 1)
 			add_definitions(-DPTW32_STATIC_LIB)
 			add_subdirectory("${BC_DIR}/lib/win32/pthreads-win32")
@@ -247,10 +282,14 @@ elseif (WIN32)
 		endif()
 
 		# build curl
-		add_definitions(-DCURL_STATICLIB)
-		add_subdirectory("${BC_DIR}/lib/win32/curl-7.56.0")
-		include_directories("${BC_DIR}/lib/win32/curl-7.56.0/include")
-		list(APPEND libraries libcurl)
+		if (USE_CURL)
+			add_definitions(-DCURL_STATICLIB)
+			add_subdirectory("${BC_DIR}/lib/win32/curl-7.56.0")
+			include_directories("${BC_DIR}/lib/win32/curl-7.56.0/include")
+			list(APPEND libraries libcurl)
+		else()
+			list(APPEND libraries msxml6 comsuppwd)
+		endif()
 
 		target_link_libraries(brainCloud PUBLIC ${libraries})
 	endif()

@@ -25,9 +25,12 @@
 #elif (__APPLE__)
 #include "braincloud/internal/mac/nsURLLoader.h"
 #include "braincloud/internal/mac/nsFileUploader.h"
-#else
+#elif defined(USE_CURL)
 #include "braincloud/internal/nix/cURLLoader.h"
 #include "braincloud/internal/nix/cURLFileUploader.h"
+#elif defined(WIN32)
+#include "braincloud/internal/win/XMLHTTPRequestLoader.h"
+#include "braincloud/internal/win/XMLHTTPRequestFileUploader.h"
 #endif
 
 #if defined(USE_PTHREAD)
@@ -1069,8 +1072,10 @@ namespace BrainCloud
 		//#elif (TARGET_OS_WATCH == 1)
 #elif (__APPLE__)
 		_loader = new nsURLLoader();
-#else
+#elif defined(USE_CURL)
 		_loader = new cURLLoader();
+#elif defined(WIN32)
+        _loader = new XMLHTTPRequestLoader();
 #endif
 		_loader->setTimeout((int)getRetryTimeoutMillis(_retryCount));
 		_loader->load(_request);
@@ -1182,8 +1187,10 @@ namespace BrainCloud
 #else
 #if defined (__APPLE__)
 		NSFileUploader *uploader = new NSFileUploader();
-#else
-		cURLFileUploader *uploader = new cURLFileUploader();
+#elif defined(USE_CURL)
+        cURLFileUploader *uploader = new cURLFileUploader();
+#elif defined(WIN32)
+        XMLHTTPRequestFileUploader *uploader = new XMLHTTPRequestFileUploader();
 #endif
 		uploader->enableLogging(_loggingEnabled);
 		uploader->setUploadLowTransferRateThreshold(_uploadLowTransferRateThresholdBytesPerSec);

@@ -11,7 +11,7 @@
 #include <list>
 #include <queue>
 
-#if defined(WIN32)
+#if defined(WIN32) && defined(USE_CURL)
 #include <WinSock2.h>
 #include <Windows.h>
 #endif
