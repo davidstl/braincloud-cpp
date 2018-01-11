@@ -6,8 +6,10 @@ project(brainCloud)
 if (UNIX AND NOT APPLE)
     set(LINUX 1)
 endif()
-if (WIN32 AND MSVC AND MSVC_VERSION GREATER_EQUAL 1800)
-	set(VS2013_OR_HIGHER 1)
+if (WIN32 AND MSVC AND MSVC_VERSION)
+	if (MSVC_VERSION GREATER_EQUAL 1800)
+		set(VS2013_OR_HIGHER 1)
+	endif()
 endif()
 
 #=============================================================================
@@ -23,13 +25,13 @@ add_definitions(-DUSE_IMMEDIATE_RETRY)
 add_definitions(-DGAMECLIENT_DEBUGLEVEL=1)
 
 # On VS2013+, lets not use CURL but straight Windows' IXMLHttpRequest2, unless specified otherwise
-if (NOT USE_CPPREST AND NOT ${VS2013_OR_HIGHER})
+if (NOT USE_CPPREST AND NOT VS2013_OR_HIGHER)
 	add_definitions(-DUSE_CURL)
 	set(USE_CURL 1)
 endif()
 
 # On VS2013+, lets not use CURL but straight Windows' IXMLHttpRequest2, unless specified otherwise
-if (NOT USE_CPPREST AND NOT ${VS2013_OR_HIGHER})
+if (NOT USE_CPPREST AND NOT VS2013_OR_HIGHER)
 	add_definitions(-DUSE_PTHREAD)
 	set(USE_PTHREAD 1)
 endif()
@@ -38,7 +40,7 @@ endif()
 # Compiler flags
 #=============================================================================
 # We want to use C++11 flag on the compiler for std::thread
-if (${VS2013_OR_HIGHER})
+if (VS2013_OR_HIGHER)
 	set(CMAKE_CXX_STANDARD 11)
 endif()
 
@@ -270,7 +272,7 @@ elseif (WIN32)
 
 		target_link_libraries(brainCloud general ${BC_WINHTTP_LIB} ${BC_BCRYPT_LIB} ${BC_CRYPT32_LIB} debug ${BC_CPPREST_DEBUG_LIB} optimized ${BC_CPPREST_RELEASE_LIB})
 	else()
-		if (${VS2013_OR_HIGHER})
+		if (VS2013_OR_HIGHER)
 			target_link_libraries(brainCloud PUBLIC msxml6 comsuppwd)
 		else()
 			# TODO: the cpprestsdk-static is *not* built by the CMake project.
