@@ -280,6 +280,11 @@ namespace BrainCloud
             _In_  ULONG cb,
             _Out_opt_  ULONG *pcbRead) override
         {
+            if (pv == nullptr)
+            {
+                return E_INVALIDARG;
+            }
+
             auto toRead = std::min<ULONG>(_size - _read, cb);
             if (toRead)
             {
@@ -391,14 +396,20 @@ namespace BrainCloud
         UploaderStream* pUploaderStream = new UploaderStream(fp, fileUploader->_fileLength);
 
         // Open the URL
-        auto urlw = utf8ToUtf16(fileUploader->_uploadUrl);
-        hr = pRequest->Open(L"POST", 
+        std::string uploadUrl = fileUploader->_uploadUrl;
+        uploadUrl.append("?sessionId=");
+        uploadUrl.append(fileUploader->_sessionId);
+        uploadUrl.append("&uploadId=");
+        uploadUrl.append(fileUploader->_fileUploadId);
+        auto urlw = utf8ToUtf16(uploadUrl);
+        hr = pRequest->Open(L"PUT", 
                             urlw.c_str(),
                             pCallback,
                             NULL, NULL, NULL, NULL);
 
         // Set headers
-        hr = pRequest->SetRequestHeader(L"Content-length", std::to_wstring(fileUploader->_fileLength).c_str());
+        hr = pRequest->SetRequestHeader(L"Expect", L"100-continue");
+        hr = pRequest->SetRequestHeader(L"Content-Length", std::to_wstring(fileUploader->_fileLength).c_str());
         hr = pRequest->SetRequestHeader(L"Content-Type", L"application/octet-stream");
 
         // Keep references in the uploader
@@ -436,7 +447,17 @@ namespace BrainCloud
             }
             else
             {
-                fileUploader->_errorReasonCode = CLIENT_UPLOAD_FILE_UNKNOWN;
+                fileUploader->_mutex.lock();
+                auto _pRequest = fileUploader->_pRequest;
+                fileUploader->_mutex.unlock();
+                if (!_pRequest)
+                {
+                    fileUploader->_errorReasonCode = CLIENT_UPLOAD_FILE_CANCELLED;
+                }
+                else
+                {
+                    fileUploader->_errorReasonCode = CLIENT_UPLOAD_FILE_UNKNOWN;
+                }
                 IBrainCloudComms::createJsonErrorResponse(fileUploader->_httpStatus,
                     fileUploader->_errorReasonCode,
                     pCallback->getResultMessage(),
