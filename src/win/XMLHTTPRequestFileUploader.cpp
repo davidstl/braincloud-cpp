@@ -12,12 +12,6 @@
 #include <iostream>
 #include <thread>
 
-static std::string utf16ToUtf8(const std::wstring& utf16)
-{
-    static std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t> stringConverter;
-    return stringConverter.to_bytes(utf16);
-}
-
 static std::wstring utf8ToUtf16(const std::string& utf8)
 {
     static std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t> stringConverter;

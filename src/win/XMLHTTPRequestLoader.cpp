@@ -22,7 +22,6 @@ namespace BrainCloud
 
     XMLHTTPRequestLoader::XMLHTTPRequestLoader()
     {
-
     }
 
     XMLHTTPRequestLoader::~XMLHTTPRequestLoader()

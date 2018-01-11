@@ -33,28 +33,6 @@
 #include "braincloud/internal/win/XMLHTTPRequestFileUploader.h"
 #endif
 
-#if defined(USE_PTHREAD)
-static void lock_mutex(pthread_mutex_t *pMutex)
-{
-    pthread_mutex_lock(pMutex);
-}
-
-static void unlock_mutex(pthread_mutex_t *pMutex)
-{
-    pthread_mutex_unlock(pMutex);
-}
-#else
-static void lock_mutex(std::mutex *pMutex)
-{
-    pMutex->lock();
-}
-
-static void unlock_mutex(std::mutex *pMutex)
-{
-    pMutex->unlock();
-}
-#endif
-
 namespace BrainCloud
 {
 	BrainCloudComms::BrainCloudComms(BrainCloudClient* in_client)
