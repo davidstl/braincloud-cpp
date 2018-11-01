@@ -45,9 +45,9 @@ if (NOT USE_CPPREST AND NOT VS2013_OR_HIGHER AND NOT APPLE)
 endif()
 
 # On non-windows platform, lets use libwebsockets
-# if (NOT WIN32) # Until we implement a windows specific solution
+if (NOT WIN32)
     set(USE_LIBWEBSOCKETS 1)
-# endif()
+endif()
 
 #=============================================================================
 # Compiler flags
@@ -140,9 +140,11 @@ if (APPLE)
     include_directories("${BC_DIR}/lib/apple/sskeychain")
 elseif (WIN32)
     list(APPEND OS_SPECIFIC_INCS
+        "include/braincloud/internal/win/Win32WebSocket.h"
         "include/braincloud/internal/win/WindowsSaveDataHelper.h")
     list(APPEND OS_SPECIFIC_SRCS
         "src/win/Win32TCPSocket.cpp"
+        "src/win/Win32WebSocket.cpp"
         "src/win/WindowsDevice.cpp"
         "src/win/WindowsGUID.cpp"
         "src/win/WindowsSaveDataHelper.cpp")
@@ -386,6 +388,7 @@ elseif (WIN32)
                 optimized ${BC_CURL_LIB_RELEASE}
                 debug ${BC_CURL_LIB_DEBUG})
         endif()
+        list(APPEND libs Websocket)
     endif()
 endif()
 

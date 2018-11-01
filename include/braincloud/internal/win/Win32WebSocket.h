@@ -3,6 +3,9 @@
 
 #include "braincloud/internal/IWebSocket.h"
 
+#include <Windows.h>
+#include <websocket.h>
+
 #include <atomic>
 #include <condition_variable>
 #include <map>
@@ -52,6 +55,7 @@ namespace BrainCloud
 
         // Context
         std::map<std::string, std::string> _authHeaders;
+        WEB_SOCKET_HANDLE _webSocketHandle;
     };
 };
 

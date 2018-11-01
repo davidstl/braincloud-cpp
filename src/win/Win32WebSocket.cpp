@@ -1,4 +1,4 @@
-#include "braincloud/internal/Win32WebSocket.h"
+#include "braincloud/internal/win/Win32WebSocket.h"
 
 namespace BrainCloud
 {
@@ -16,7 +16,34 @@ namespace BrainCloud
         : _isValid(false)
         , _isConnecting(true)
         , _authHeaders(headers)
+        , _webSocketHandle(0)
     {
+        HRESULT result;
+
+        // Create handle
+        WEB_SOCKET_PROPERTY properties[] = { {} };
+        result = WebSocketCreateClientHandle(properties, 0, &_webSocketHandle);
+        if (result != S_OK)
+        {
+            _isConnecting = false;
+            return;
+        }
+
+        // Begin handshake
+        result = WebSocketBeginClientHandshake(
+            _webSocketHandle,
+            PCSTR                         *pszSubprotocols,
+            ULONG                         ulSubprotocolCount,
+            PCSTR                         *pszExtensions,
+            ULONG                         ulExtensionCount,
+            const PWEB_SOCKET_HTTP_HEADER pInitialHeaders,
+            ULONG                         ulInitialHeaderCount,
+            PWEB_SOCKET_HTTP_HEADER       *pAdditionalHeaders,
+            ULONG                         *pulAdditionalHeaderCount
+        );
+
+        int tmp;
+        tmp = 5;
     }
 
     bool Win32WebSocket::isValid()
