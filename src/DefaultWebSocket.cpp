@@ -78,6 +78,7 @@ namespace BrainCloud
         std::transform(protocol.begin(), protocol.end(), protocolCaps.begin(), [](unsigned char c){ return std::toupper(c); });
         if (protocolCaps != "WS" && protocolCaps != "WSS")
         {
+            _isConnecting = false;
             std::cout << "Invalid websocket protocol: " << protocol << std::endl;
             return;
         }
@@ -145,6 +146,8 @@ namespace BrainCloud
             _pLws = lws_client_connect_via_info(&connectInfo);
             if (!_pLws)
             {
+                _isConnecting = false;
+                _isValid = false;
                 std::cout << "Failed to create websocket context" << std::endl;
                 return;
             }
@@ -173,7 +176,8 @@ namespace BrainCloud
                 {
                     return -1;
                 }
-                pWebSocket->onError((const char*)in);
+                const char *error = in ? (const char*)in : "UNKNOWN";
+                pWebSocket->onError(error);
                 break;
             }
             case LWS_CALLBACK_CLIENT_ESTABLISHED:
