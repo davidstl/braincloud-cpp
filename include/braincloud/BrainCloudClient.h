@@ -18,6 +18,7 @@
 #include "braincloud/INetworkErrorCallback.h"
 #include "braincloud/IRewardCallback.h"
 #include "braincloud/IServerCallback.h"
+#include "braincloud/IRTTCallback.h"
 #include "braincloud/IRTTConnectCallback.h"
 
 #include "braincloud/internal/IBrainCloudComms.h"
