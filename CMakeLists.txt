@@ -114,6 +114,7 @@ if (USE_LIBWEBSOCKETS OR ANDROID)
 endif()
 if (WIN32)
     list(APPEND OS_SPECIFIC_SRCS "src/win/Win32TCPSocket.cpp")
+    list(APPEND OS_SPECIFIC_SRCS "src/win/Win32RelayTCPSocket.cpp")
     if (UWP)
         list(APPEND OS_SPECIFIC_INCS
             "include/braincloud/internal/win/UWPWebSocket.h")
