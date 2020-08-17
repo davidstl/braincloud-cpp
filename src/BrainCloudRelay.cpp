@@ -73,7 +73,7 @@ namespace BrainCloud
         m_commsLayer->deregisterSystemCallback();
     }
 
-    void BrainCloudRelay::send(const uint8_t* in_data, int in_size, int toNetId, bool in_reliable, bool in_ordered, eRelayChannel in_channel)
+    void BrainCloudRelay::send(const uint8_t* in_data, int in_size, uint64_t toNetId, bool in_reliable, bool in_ordered, eRelayChannel in_channel)
     {
         if (toNetId == TO_ALL_PLAYERS)
         {

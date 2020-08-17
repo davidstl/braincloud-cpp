@@ -145,7 +145,7 @@ namespace BrainCloud
          * @param ordered Receive this ordered or not.
          * @param channel One of: (CHANNEL_HIGH_PRIORITY_1, CHANNEL_HIGH_PRIORITY_2, CHANNEL_NORMAL_PRIORITY, CHANNEL_LOW_PRIORITY)
          */
-        void send(const uint8_t* in_data, int in_size, int toNetId, bool in_reliable, bool in_ordered, eRelayChannel in_channel);
+        void send(const uint8_t* in_data, int in_size, uint64_t toNetId, bool in_reliable, bool in_ordered, eRelayChannel in_channel);
 
         /**
          * Send a packet to any players by using a mask
