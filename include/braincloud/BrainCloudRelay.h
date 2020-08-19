@@ -172,7 +172,7 @@ namespace BrainCloud
 
 	private:
         RelayComms* m_commsLayer;
-		BrainCloudClient* m_client;
+        BrainCloudClient* m_client;
 	};
 };
 
