@@ -30,10 +30,19 @@ namespace BrainCloud
             hints.ai_family = AF_UNSPEC;
             hints.ai_socktype = SOCK_STREAM;
             hints.ai_protocol = IPPROTO_TCP;
+            
+            int ret = getaddrinfo(address.c_str(), std::to_string(port).c_str(), &hints, &m_pRemoteAddresses);
 
-            getaddrinfo(address.c_str(), std::to_string(port).c_str(), &hints, &m_pRemoteAddresses);
-
-            m_state = State::Connecting;
+            if (ret != 0)
+            {
+                std::cout << "Relay: Failed calling getaddrinfo, errno: " << errno << std::endl;
+                m_socket = INVALID_SOCKET;
+                m_state = State::Error;
+            }
+            else
+            {
+                m_state = State::Connecting;
+            }
         });
     }
 
