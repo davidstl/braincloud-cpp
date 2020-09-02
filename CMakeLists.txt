@@ -219,6 +219,7 @@ add_library(brainCloud STATIC
     include/braincloud/BrainCloudProfanity.h
     include/braincloud/BrainCloudPushNotification.h
     include/braincloud/BrainCloudRedemptionCode.h
+    include/braincloud/BrainCloudRelay.h
     include/braincloud/BrainCloudRTT.h
     include/braincloud/BrainCloudS3Handling.h
     include/braincloud/BrainCloudScript.h
@@ -261,6 +262,7 @@ add_library(brainCloud STATIC
     include/braincloud/internal/DefaultRelayTCPSocket.h
     include/braincloud/internal/DefaultBrainCloudComms.h
     include/braincloud/internal/JsonUtil.h
+    include/braincloud/internal/RelayComms.h
     include/braincloud/internal/RTTComms.h
     include/braincloud/internal/SaveDataHelper.h
     include/braincloud/internal/StringUtil.h
@@ -308,6 +310,7 @@ add_library(brainCloud STATIC
     src/BrainCloudProfanity.cpp
     src/BrainCloudPushNotification.cpp
     src/BrainCloudRedemptionCode.cpp
+    src/BrainCloudRelay.cpp
     src/BrainCloudRTT.cpp
     src/BrainCloudS3Handling.cpp
     src/BrainCloudScript.cpp
@@ -327,6 +330,7 @@ add_library(brainCloud STATIC
     src/JsonUtil.cpp
     src/OperationParam.cpp
     src/Platform.cpp
+    src/RelayComms.cpp
     src/RTTComms.cpp
     src/SaveDataHelper.cpp
     src/ServerCall.cpp
